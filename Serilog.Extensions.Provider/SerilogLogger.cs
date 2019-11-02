@@ -13,15 +13,15 @@ using FrameworkLogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace Serilog.Extensions.Provider
 {
-    class SerilogLogger : FrameworkLogger
+    internal class SerilogLogger : FrameworkLogger
     {
-        readonly SerilogLoggerProvider _provider;
-        readonly ILogger _logger;
+        private readonly SerilogLoggerProvider _provider;
+        private readonly ILogger _logger;
 
-        private static readonly MessageTemplateParser MessageTemplateParser = new MessageTemplateParser();
+        private static readonly MessageTemplateParser _messageTemplateParser = new MessageTemplateParser();
 
         // It's rare to see large event ids, as they are category-specific
-        private static readonly LogEventProperty[] LowEventIdValues = Enumerable.Range(0, 48)
+        private static readonly LogEventProperty[] _lowEventIdValues = Enumerable.Range(0, 48)
             .Select(n => new LogEventProperty("Id", new ScalarValue(n)))
             .ToArray();
 
@@ -63,18 +63,18 @@ namespace Serilog.Extensions.Provider
             {
                 foreach (var property in structure)
                 {
-                    if (string.Equals(property.Key, SerilogLoggerProvider.OriginalFormatPropertyName, StringComparison.OrdinalIgnoreCase) && property.Value is string value)
+                    if (string.Equals(property.Key, SerilogLoggerProvider._originalFormatPropertyName, StringComparison.OrdinalIgnoreCase) && property.Value is string value)
                     {
                         messageTemplate = value;
                     }
                     else if (property.Key.StartsWith("@", StringComparison.Ordinal))
                     {
-                        if (logger.BindProperty(property.Key.Substring(1), property.Value, true, out var destructured))
+                        if (logger.BindProperty(property.Key.Substring(1), property.Value, destructureObjects: true, out var destructured))
                             properties.Add(destructured);
                     }
                     else
                     {
-                        if (logger.BindProperty(property.Key, property.Value, false, out var bound))
+                        if (logger.BindProperty(property.Key, property.Value, destructureObjects: false, out var bound))
                             properties.Add(bound);
                     }
                 }
@@ -85,7 +85,7 @@ namespace Serilog.Extensions.Provider
                 if (messageTemplate == null && !stateTypeInfo.IsGenericType)
                 {
                     messageTemplate = "{" + stateType.Name + ":l}";
-                    if (logger.BindProperty(stateType.Name, AsLoggableValue(state, formatter), false, out var stateTypeProperty))
+                    if (logger.BindProperty(stateType.Name, AsLoggableValue(state, formatter), destructureObjects: false, out var stateTypeProperty))
                         properties.Add(stateTypeProperty);
                 }
             }
@@ -113,16 +113,16 @@ namespace Serilog.Extensions.Provider
             if (eventId.Id != 0 || eventId.Name != null)
                 properties.Add(CreateEventIdProperty(eventId));
 
-            var parsedTemplate = MessageTemplateParser.Parse(messageTemplate ?? "");
+            var parsedTemplate = _messageTemplateParser.Parse(messageTemplate ?? "");
             var evt = new LogEvent(DateTimeOffset.Now, level, exception, parsedTemplate, properties);
             logger.Write(evt);
         }
 
-        static object AsLoggableValue<TState>(TState state, Func<TState, Exception, string> formatter)
+        private static object AsLoggableValue<TState>(TState state, Func<TState, Exception, string> formatter)
         {
             object sobj = state;
             if (formatter != null)
-                sobj = formatter(state, null);
+                sobj = formatter(state, arg2: null);
             return sobj;
         }
 
@@ -132,9 +132,9 @@ namespace Serilog.Extensions.Provider
 
             if (eventId.Id != 0)
             {
-                if (eventId.Id >= 0 && eventId.Id < LowEventIdValues.Length)
+                if (eventId.Id >= 0 && eventId.Id < _lowEventIdValues.Length)
                     // Avoid some allocations
-                    properties.Add(LowEventIdValues[eventId.Id]);
+                    properties.Add(_lowEventIdValues[eventId.Id]);
                 else
                     properties.Add(new LogEventProperty("Id", new ScalarValue(eventId.Id)));
             }

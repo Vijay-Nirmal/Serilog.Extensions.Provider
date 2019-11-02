@@ -19,10 +19,10 @@ namespace Serilog.Extensions.Provider
     [ProviderAlias("Serilog")]
     public sealed class SerilogLoggerProvider : ILoggerProvider, ILogEventEnricher
     {
-        internal const string OriginalFormatPropertyName = "{OriginalFormat}";
-        internal const string ScopePropertyName = "Scope";
+        internal const string _originalFormatPropertyName = "{OriginalFormat}";
+        internal const string _scopePropertyName = "Scope";
 
-        readonly ILogger _logger;
+        private readonly ILogger _logger;
 
         /// <summary>
         /// Construct a <see cref="SerilogLoggerProvider"/>.
@@ -76,11 +76,11 @@ namespace Serilog.Extensions.Provider
             if (scopeItems != null)
             {
                 scopeItems.Reverse();
-                logEvent.AddPropertyIfAbsent(new LogEventProperty(ScopePropertyName, new SequenceValue(scopeItems)));
+                logEvent.AddPropertyIfAbsent(new LogEventProperty(_scopePropertyName, new SequenceValue(scopeItems)));
             }
         }
 
-        readonly AsyncLocal<SerilogLoggerScope> _value = new AsyncLocal<SerilogLoggerScope>();
+        private readonly AsyncLocal<SerilogLoggerScope> _value = new AsyncLocal<SerilogLoggerScope>();
 
         internal SerilogLoggerScope CurrentScope
         {
@@ -91,7 +91,7 @@ namespace Serilog.Extensions.Provider
         /// <inheritdoc />
         public void Dispose()
         {
-
+            // Noting to Dispose
         }
     }
 }

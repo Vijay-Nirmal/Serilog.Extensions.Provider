@@ -8,16 +8,16 @@ using System.Collections.Generic;
 
 namespace Serilog.Extensions.Provider
 {
-    class SerilogLoggerScope : IDisposable
+    internal sealed class SerilogLoggerScope : IDisposable
     {
-        const string NoName = "None";
+        private const string _noName = "None";
 
-        readonly SerilogLoggerProvider _provider;
-        readonly object _state;
-        readonly IDisposable _chainedDisposable;
+        private readonly SerilogLoggerProvider _provider;
+        private readonly object _state;
+        private readonly IDisposable _chainedDisposable;
 
         // An optimization only, no problem if there are data races on this.
-        bool _disposed;
+        private bool _disposed;
 
         public SerilogLoggerScope(SerilogLoggerProvider provider, object state, IDisposable chainedDisposable = null)
         {
@@ -57,14 +57,13 @@ namespace Serilog.Extensions.Provider
                 return;
             }
 
-            var stateProperties = _state as IEnumerable<KeyValuePair<string, object>>;
-            if (stateProperties != null)
+            if (_state is IEnumerable<KeyValuePair<string, object>> stateProperties)
             {
                 scopeItem = null; // Unless it's `FormattedLogValues`, these are treated as property bags rather than scope items.
 
                 foreach (var stateProperty in stateProperties)
                 {
-                    if (stateProperty.Key == SerilogLoggerProvider.OriginalFormatPropertyName && stateProperty.Value is string)
+                    if (string.Equals(stateProperty.Key, SerilogLoggerProvider._originalFormatPropertyName, StringComparison.Ordinal) && stateProperty.Value is string)
                     {
                         scopeItem = new ScalarValue(_state.ToString());
                         continue;
@@ -73,7 +72,7 @@ namespace Serilog.Extensions.Provider
                     var key = stateProperty.Key;
                     var destructureObject = false;
 
-                    if (key.StartsWith("@"))
+                    if (key.StartsWith("@", StringComparison.Ordinal))
                     {
                         key = key.Substring(1);
                         destructureObject = true;
@@ -85,7 +84,7 @@ namespace Serilog.Extensions.Provider
             }
             else
             {
-                scopeItem = propertyFactory.CreateProperty(NoName, _state).Value;
+                scopeItem = propertyFactory.CreateProperty(_noName, _state).Value;
             }
         }
     }
